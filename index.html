@@ -62,7 +62,24 @@
             cursor: pointer;
         }
 
+        input {
+            padding: 10px;
+            width: 200px;
+        }
+
+        #zonesList {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .zone-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 5px;
+        }
+
     </style>
+
 </head>
 
 
@@ -72,7 +89,11 @@
 
     <h1>Редактор зон тела</h1>
 
-    <p>Кликай по изображению, чтобы создать область</p>
+    <input
+        id="zoneName"
+        type="text"
+        placeholder="Название зоны"
+    >
 
     <div class="body-map">
 
@@ -82,6 +103,8 @@
             class="zones"
             viewBox="0 0 250 700"
         >
+
+            <!-- Здесь будут появляться зоны -->
 
             <polygon
                 id="currentZone"
@@ -94,22 +117,25 @@
     </div>
 
 
-    <button onclick="finishZone()">
-        Завершить область
-    </button>
+    <div>
 
-    <button onclick="clearZone()">
-        Очистить
-    </button>
+        <button onclick="undoPoint()">
+            Отменить точку
+        </button>
 
-    <h3>Координаты:</h3>
+        <button onclick="finishZone()">
+            Завершить зону
+        </button>
 
-    <textarea
-        id="coordinates"
-        rows="5"
-        cols="30"
-        readonly
-    ></textarea>
+        <button onclick="clearCurrentZone()">
+            Очистить
+        </button>
+
+    </div>
+
+
+    <div id="zonesList"></div>
+
 
 </div>
 
@@ -117,36 +143,68 @@
 <script>
 
     const svg = document.querySelector('.zones');
-    const polygon = document.querySelector('#currentZone');
-    const coordinatesBox = document.querySelector('#coordinates');
+
+    const currentZone =
+        document.querySelector('#currentZone');
+
+    const zoneName =
+        document.querySelector('#zoneName');
+
+    const zonesList =
+        document.querySelector('#zonesList');
+
 
     let points = [];
 
+    let zones = [];
+
+
+    // Клик по изображению
 
     svg.addEventListener('click', function(event) {
 
-        const rect = svg.getBoundingClientRect();
+        const rect =
+            svg.getBoundingClientRect();
 
-        const x = (event.clientX - rect.left) * 250 / rect.width;
-        const y = (event.clientY - rect.top) * 700 / rect.height;
+
+        const x =
+            (event.clientX - rect.left)
+            * 250 / rect.width;
+
+
+        const y =
+            (event.clientY - rect.top)
+            * 700 / rect.height;
+
 
         points.push({
+
             x: Math.round(x),
+
             y: Math.round(y)
+
         });
 
-        updatePolygon();
+
+        updateCurrentZone();
 
     });
 
 
-    function updatePolygon() {
+    // Обновляем текущую область
+
+    function updateCurrentZone() {
 
         const pointsString = points
-            .map(point => `${point.x},${point.y}`)
+
+            .map(point =>
+                `${point.x},${point.y}`
+            )
+
             .join(' ');
 
-        polygon.setAttribute(
+
+        currentZone.setAttribute(
             'points',
             pointsString
         );
@@ -154,27 +212,149 @@
     }
 
 
-    function finishZone() {
+    // Отменить последнюю точку
 
-        const pointsString = points
-            .map(point => `${point.x},${point.y}`)
-            .join(' ');
+    function undoPoint() {
 
-        coordinatesBox.value = pointsString;
+        points.pop();
+
+        updateCurrentZone();
 
     }
 
 
-    function clearZone() {
+    // Завершить зону
+
+    function finishZone() {
+
+        if (points.length < 3) {
+
+            alert(
+                'Нужно поставить минимум 3 точки'
+            );
+
+            return;
+
+        }
+
+
+        const name =
+            zoneName.value.trim();
+
+
+        if (!name) {
+
+            alert(
+                'Введите название зоны'
+            );
+
+            return;
+
+        }
+
+
+        const pointsCopy =
+            [...points];
+
+
+        zones.push({
+
+            name: name,
+
+            points: pointsCopy
+
+        });
+
+
+        // Создаём SVG polygon
+
+        const polygon =
+            document.createElementNS(
+                'http://www.w3.org/2000/svg',
+                'polygon'
+            );
+
+
+        polygon.setAttribute(
+            'class',
+            'zone'
+        );
+
+
+        polygon.setAttribute(
+            'points',
+            pointsCopy
+                .map(point =>
+                    `${point.x},${point.y}`
+                )
+                .join(' ')
+        );
+
+
+        svg.insertBefore(
+            polygon,
+            currentZone
+        );
+
+
+        // Очищаем текущую область
 
         points = [];
 
-        polygon.setAttribute(
+        currentZone.setAttribute(
             'points',
             ''
         );
 
-        coordinatesBox.value = '';
+
+        zoneName.value = '';
+
+
+        updateZonesList();
+
+    }
+
+
+    // Очистить текущую область
+
+    function clearCurrentZone() {
+
+        points = [];
+
+        currentZone.setAttribute(
+            'points',
+            ''
+        );
+
+    }
+
+
+    // Показываем список зон
+
+    function updateZonesList() {
+
+        zonesList.innerHTML =
+            '<h3>Созданные зоны:</h3>';
+
+
+        zones.forEach(function(zone, index) {
+
+            const item =
+                document.createElement('div');
+
+
+            item.className =
+                'zone-item';
+
+
+            item.innerHTML =
+
+                `${index + 1}. ${zone.name}`;
+
+
+            zonesList.appendChild(item);
+
+        });
 
     }
 
