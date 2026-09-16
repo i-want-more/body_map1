@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="ru">
 
@@ -271,7 +271,7 @@
 
         <button onclick="addEllipse()">
 
-            Добавить эллипс
+            Добавить зону
 
         </button>
 
@@ -281,7 +281,7 @@
             onclick="updateEllipse()"
         >
 
-            Обновить эллипс
+            Обновить зону
 
         </button>
 
@@ -335,12 +335,10 @@
 
 
     // --------------------------------
-    // Добавление нового эллипса
+    // Добавление новой зоны-полигона
     // --------------------------------
 
-
     function addEllipse() {
-
 
         const name =
             document
@@ -348,30 +346,25 @@
             .value
             .trim();
 
-
         const x =
             Number(
                 document.querySelector('#x').value
             );
-
 
         const y =
             Number(
                 document.querySelector('#y').value
             );
 
-
         const width =
             Number(
                 document.querySelector('#width').value
             );
 
-
         const height =
             Number(
                 document.querySelector('#height').value
             );
-
 
         if (!name) {
 
@@ -380,75 +373,44 @@
             );
 
             return;
-
         }
 
+        // Начальная форма — прямоугольник.
+        // После создания его вершины можно свободно двигать.
+        const points = [
+            { x: x - width / 2, y: y - height / 2 },
+            { x: x + width / 2, y: y - height / 2 },
+            { x: x + width / 2, y: y + height / 2 },
+            { x: x - width / 2, y: y + height / 2 }
+        ];
 
-        const ellipse =
+        const polygon =
             document.createElementNS(
                 'http://www.w3.org/2000/svg',
-                'ellipse'
+                'polygon'
             );
 
-
-        ellipse.setAttribute(
+        polygon.setAttribute(
             'class',
             'zone'
         );
 
-
-        ellipse.setAttribute(
-            'cx',
-            x
-        );
-
-
-        ellipse.setAttribute(
-            'cy',
-            y
-        );
-
-
-        ellipse.setAttribute(
-            'rx',
-            width / 2
-        );
-
-
-        ellipse.setAttribute(
-            'ry',
-            height / 2
-        );
-
-
-        svg.appendChild(
-            ellipse
-        );
-
+        svg.appendChild(polygon);
 
         const zone = {
-
             name: name,
-
             x: x,
-
             y: y,
-
             width: width,
-
             height: height,
-
-            element: ellipse
-
+            points: points,
+            element: polygon,
+            handles: []
         };
-
 
         zones.push(zone);
 
-
-        // Клик по эллипсу
-
-        ellipse.addEventListener(
+        polygon.addEventListener(
             'click',
             function(event) {
 
@@ -459,9 +421,11 @@
             }
         );
 
+        renderZone(zone);
+
+        selectZone(zone);
 
         updateZonesList();
-
 
         document
         .querySelector('#zoneName')
@@ -471,17 +435,233 @@
 
 
     // --------------------------------
-    // Выбор эллипса
+    // Отрисовка полигона
     // --------------------------------
 
+    function renderZone(zone) {
+
+        zone.element.setAttribute(
+            'points',
+            zone.points
+                .map(
+                    point => `${point.x},${point.y}`
+                )
+                .join(' ')
+        );
+
+        // Удаляем старые точки
+        zone.handles.forEach(
+            handle => handle.remove()
+        );
+
+        zone.handles = [];
+
+        // Точки показываем только у выбранной зоны
+        if (selectedZone !== zone) {
+            return;
+        }
+
+        zone.points.forEach(
+            function(point, index) {
+
+                const handle =
+                    document.createElementNS(
+                        'http://www.w3.org/2000/svg',
+                        'circle'
+                    );
+
+                handle.setAttribute(
+                    'class',
+                    'point-handle'
+                );
+
+                handle.setAttribute(
+                    'cx',
+                    point.x
+                );
+
+                handle.setAttribute(
+                    'cy',
+                    point.y
+                );
+
+                handle.setAttribute(
+                    'r',
+                    '6'
+                );
+
+                handle.dataset.index = index;
+
+                svg.appendChild(handle);
+
+                zone.handles.push(handle);
+
+                let dragging = false;
+
+                handle.addEventListener(
+                    'mousedown',
+                    function(event) {
+
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        dragging = true;
+
+                    }
+                );
+
+                window.addEventListener(
+                    'mousemove',
+                    function(event) {
+
+                        if (!dragging) {
+                            return;
+                        }
+
+                        const rect =
+                            svg.getBoundingClientRect();
+
+                        const scaleX =
+                            250 / rect.width;
+
+                        const scaleY =
+                            700 / rect.height;
+
+                        const newX =
+                            (event.clientX - rect.left) * scaleX;
+
+                        const newY =
+                            (event.clientY - rect.top) * scaleY;
+
+                        zone.points[index].x =
+                            Math.max(
+                                0,
+                                Math.min(250, newX)
+                            );
+
+                        zone.points[index].y =
+                            Math.max(
+                                0,
+                                Math.min(700, newY)
+                            );
+
+                        updateZoneGeometry(zone);
+
+                    }
+                );
+
+                window.addEventListener(
+                    'mouseup',
+                    function() {
+
+                        if (!dragging) {
+                            return;
+                        }
+
+                        dragging = false;
+
+                        updateZonesList();
+
+                    }
+                );
+
+            }
+        );
+
+    }
+
+
+    // --------------------------------
+    // Обновление геометрии зоны
+    // --------------------------------
+
+    function updateZoneGeometry(zone) {
+
+        zone.element.setAttribute(
+            'points',
+            zone.points
+                .map(
+                    point => `${point.x},${point.y}`
+                )
+                .join(' ')
+        );
+
+        zone.handles.forEach(
+            function(handle, index) {
+
+                handle.setAttribute(
+                    'cx',
+                    zone.points[index].x
+                );
+
+                handle.setAttribute(
+                    'cy',
+                    zone.points[index].y
+                );
+
+            }
+        );
+
+        updateZoneDimensions(zone);
+
+        if (selectedZone === zone) {
+
+            document.querySelector('#x').value =
+                Math.round(zone.x);
+
+            document.querySelector('#y').value =
+                Math.round(zone.y);
+
+            document.querySelector('#width').value =
+                Math.round(zone.width);
+
+            document.querySelector('#height').value =
+                Math.round(zone.height);
+
+        }
+
+    }
+
+
+    // --------------------------------
+    // Расчёт размеров полигона
+    // --------------------------------
+
+    function updateZoneDimensions(zone) {
+
+        const xs =
+            zone.points.map(point => point.x);
+
+        const ys =
+            zone.points.map(point => point.y);
+
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+
+        zone.x =
+            (minX + maxX) / 2;
+
+        zone.y =
+            (minY + maxY) / 2;
+
+        zone.width =
+            maxX - minX;
+
+        zone.height =
+            maxY - minY;
+
+    }
+
+
+    // --------------------------------
+    // Выбор зоны
+    // --------------------------------
 
     function selectZone(zone) {
 
-
         selectedZone = zone;
-
-
-        // Убираем выделение
 
         zones.forEach(
             function(item) {
@@ -493,61 +673,53 @@
             }
         );
 
-
-        // Выделяем выбранный
-
         zone.element
             .classList
             .add('selected');
-
-
-        // Загружаем данные
 
         document
         .querySelector('#zoneName')
         .value = zone.name;
 
+        updateZoneDimensions(zone);
 
         document
         .querySelector('#x')
-        .value = zone.x;
-
+        .value = Math.round(zone.x);
 
         document
         .querySelector('#y')
-        .value = zone.y;
-
+        .value = Math.round(zone.y);
 
         document
         .querySelector('#width')
-        .value = zone.width;
-
+        .value = Math.round(zone.width);
 
         document
         .querySelector('#height')
-        .value = zone.height;
+        .value = Math.round(zone.height);
+
+        zones.forEach(
+            item => renderZone(item)
+        );
 
     }
 
 
     // --------------------------------
-    // Обновление выбранного эллипса
+    // Обновление выбранной зоны
     // --------------------------------
 
-
     function updateEllipse() {
-
 
         if (!selectedZone) {
 
             alert(
-                'Сначала выберите эллипс'
+                'Сначала выберите зону'
             );
 
             return;
-
         }
-
 
         const name =
             document
@@ -555,74 +727,41 @@
             .value
             .trim();
 
-
         const x =
             Number(
                 document.querySelector('#x').value
             );
-
 
         const y =
             Number(
                 document.querySelector('#y').value
             );
 
-
         const width =
             Number(
                 document.querySelector('#width').value
             );
-
 
         const height =
             Number(
                 document.querySelector('#height').value
             );
 
-
         selectedZone.name =
             name;
 
+        // Для полигональной зоны эти поля используются
+        // как удобный способ задать новый прямоугольник.
+        selectedZone.points = [
+            { x: x - width / 2, y: y - height / 2 },
+            { x: x + width / 2, y: y - height / 2 },
+            { x: x + width / 2, y: y + height / 2 },
+            { x: x - width / 2, y: y + height / 2 }
+        ];
 
-        selectedZone.x =
-            x;
+        updateZoneDimensions(selectedZone);
 
-
-        selectedZone.y =
-            y;
-
-
-        selectedZone.width =
-            width;
-
-
-        selectedZone.height =
-            height;
-
-
-        selectedZone.element.setAttribute(
-            'cx',
-            x
-        );
-
-
-        selectedZone.element.setAttribute(
-            'cy',
-            y
-        );
-
-
-        selectedZone.element.setAttribute(
-            'rx',
-            width / 2
-        );
-
-
-        selectedZone.element.setAttribute(
-            'ry',
-            height / 2
-        );
-
+        renderZone(selectedZone);
 
         updateZonesList();
 
@@ -697,19 +836,19 @@
 
                     <br>
 
-                    X: ${zone.x}
-
+                    Центр: X ${Math.round(zone.x)}
                     &nbsp;&nbsp;
-
-                    Y: ${zone.y}
+                    Y ${Math.round(zone.y)}
 
                     <br>
 
-                    Ширина: ${zone.width}
+                    Размер: ${Math.round(zone.width)}
+                    ×
+                    ${Math.round(zone.height)}
 
-                    &nbsp;&nbsp;
+                    <br>
 
-                    Высота: ${zone.height}
+                    Точек: ${zone.points.length}
 
                     <br>
 
@@ -741,3 +880,5 @@
 </body>
 
 </html>
+
+```
