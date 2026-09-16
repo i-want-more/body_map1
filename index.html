@@ -2,80 +2,150 @@
 <html lang="ru">
 
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>Body Map Editor</title>
+
 
     <style>
 
         body {
+
             margin: 0;
+
             font-family: Arial, sans-serif;
+
             background: #f2f2f2;
+
             display: flex;
+
             justify-content: center;
+
         }
+
 
         .app {
+
             padding: 20px;
+
             text-align: center;
+
         }
+
 
         h1 {
+
             font-size: 22px;
+
         }
 
-        .body-map {
-            position: relative;
-            width: 250px;
-            margin: 20px auto;
+
+        .controls {
+
+            background: white;
+
+            padding: 15px;
+
+            border-radius: 10px;
+
+            margin-bottom: 20px;
+
         }
 
-        .body-map img {
-            width: 250px;
-            height: 700px;
-            display: block;
-        }
-
-        .zones {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 250px;
-            height: 700px;
-        }
-
-        .zone {
-            fill: rgba(255, 170, 0, 0.45);
-            stroke: orange;
-            stroke-width: 2;
-        }
-
-        .point {
-            fill: red;
-        }
-
-        button {
-            padding: 10px 16px;
-            margin: 5px;
-            cursor: pointer;
-        }
 
         input {
-            padding: 10px;
-            width: 200px;
+
+            width: 70px;
+
+            padding: 8px;
+
+            margin: 4px;
+
         }
 
-        #zonesList {
-            margin-top: 20px;
-            text-align: left;
+
+        .name-input {
+
+            width: 180px;
+
         }
+
+
+        button {
+
+            padding: 10px 15px;
+
+            margin: 5px;
+
+            cursor: pointer;
+
+        }
+
+
+        .body-map {
+
+            position: relative;
+
+            width: 250px;
+
+            margin: 20px auto;
+
+        }
+
+
+        .body-map img {
+
+            width: 250px;
+
+            height: 700px;
+
+            display: block;
+
+        }
+
+
+        .zones {
+
+            position: absolute;
+
+            top: 0;
+
+            left: 0;
+
+            width: 250px;
+
+            height: 700px;
+
+        }
+
+
+        .zone {
+
+            fill: rgba(255, 170, 0, 0.45);
+
+            stroke: orange;
+
+            stroke-width: 2;
+
+        }
+
 
         .zone-item {
+
             background: white;
+
             padding: 10px;
-            margin-bottom: 5px;
+
+            margin-top: 5px;
+
+            text-align: left;
+
         }
 
     </style>
@@ -85,56 +155,108 @@
 
 <body>
 
+
 <div class="app">
+
 
     <h1>Редактор зон тела</h1>
 
-    <input
-        id="zoneName"
-        type="text"
-        placeholder="Название зоны"
-    >
+
+    <div class="controls">
+
+
+        <div>
+
+            <input
+                class="name-input"
+                id="zoneName"
+                type="text"
+                placeholder="Название"
+            >
+
+        </div>
+
+
+        <div>
+
+            <label>
+                X
+                <input
+                    id="x"
+                    type="number"
+                    value="125"
+                >
+            </label>
+
+
+            <label>
+                Y
+                <input
+                    id="y"
+                    type="number"
+                    value="350"
+                >
+
+            </label>
+
+        </div>
+
+
+        <div>
+
+            <label>
+                Ширина
+                <input
+                    id="width"
+                    type="number"
+                    value="60"
+                >
+            </label>
+
+
+            <label>
+                Высота
+                <input
+                    id="height"
+                    type="number"
+                    value="100"
+                >
+            </label>
+
+        </div>
+
+
+        <button onclick="addEllipse()">
+            Добавить эллипс
+        </button>
+
+
+    </div>
+
 
     <div class="body-map">
 
-        <img src="body.png" alt="Body">
+
+        <img
+            src="body.png"
+            alt="Body"
+        >
+
 
         <svg
             class="zones"
             viewBox="0 0 250 700"
         >
 
-            <!-- Здесь будут появляться зоны -->
-
-            <polygon
-                id="currentZone"
-                class="zone"
-                points=""
-            />
-
         </svg>
 
-    </div>
-
-
-    <div>
-
-        <button onclick="undoPoint()">
-            Отменить точку
-        </button>
-
-        <button onclick="finishZone()">
-            Завершить зону
-        </button>
-
-        <button onclick="clearCurrentZone()">
-            Очистить
-        </button>
 
     </div>
 
 
-    <div id="zonesList"></div>
+    <div id="zonesList">
+
+    </div>
 
 
 </div>
@@ -142,104 +264,50 @@
 
 <script>
 
-    const svg = document.querySelector('.zones');
 
-    const currentZone =
-        document.querySelector('#currentZone');
+    const svg =
+        document.querySelector('.zones');
 
-    const zoneName =
-        document.querySelector('#zoneName');
 
     const zonesList =
         document.querySelector('#zonesList');
 
 
-    let points = [];
-
     let zones = [];
 
 
-    // Клик по изображению
-
-    svg.addEventListener('click', function(event) {
-
-        const rect =
-            svg.getBoundingClientRect();
-
-
-        const x =
-            (event.clientX - rect.left)
-            * 250 / rect.width;
-
-
-        const y =
-            (event.clientY - rect.top)
-            * 700 / rect.height;
-
-
-        points.push({
-
-            x: Math.round(x),
-
-            y: Math.round(y)
-
-        });
-
-
-        updateCurrentZone();
-
-    });
-
-
-    // Обновляем текущую область
-
-    function updateCurrentZone() {
-
-        const pointsString = points
-
-            .map(point =>
-                `${point.x},${point.y}`
-            )
-
-            .join(' ');
-
-
-        currentZone.setAttribute(
-            'points',
-            pointsString
-        );
-
-    }
-
-
-    // Отменить последнюю точку
-
-    function undoPoint() {
-
-        points.pop();
-
-        updateCurrentZone();
-
-    }
-
-
-    // Завершить зону
-
-    function finishZone() {
-
-        if (points.length < 3) {
-
-            alert(
-                'Нужно поставить минимум 3 точки'
-            );
-
-            return;
-
-        }
+    function addEllipse() {
 
 
         const name =
-            zoneName.value.trim();
+            document
+            .querySelector('#zoneName')
+            .value
+            .trim();
+
+
+        const x =
+            Number(
+                document.querySelector('#x').value
+            );
+
+
+        const y =
+            Number(
+                document.querySelector('#y').value
+            );
+
+
+        const width =
+            Number(
+                document.querySelector('#width').value
+            );
+
+
+        const height =
+            Number(
+                document.querySelector('#height').value
+            );
 
 
         if (!name) {
@@ -253,112 +321,131 @@
         }
 
 
-        const pointsCopy =
-            [...points];
+        const ellipse =
+            document.createElementNS(
+                'http://www.w3.org/2000/svg',
+                'ellipse'
+            );
+
+
+        ellipse.setAttribute(
+            'class',
+            'zone'
+        );
+
+
+        ellipse.setAttribute(
+            'cx',
+            x
+        );
+
+
+        ellipse.setAttribute(
+            'cy',
+            y
+        );
+
+
+        ellipse.setAttribute(
+            'rx',
+            width / 2
+        );
+
+
+        ellipse.setAttribute(
+            'ry',
+            height / 2
+        );
+
+
+        svg.appendChild(
+            ellipse
+        );
 
 
         zones.push({
 
             name: name,
 
-            points: pointsCopy
+            x: x,
+
+            y: y,
+
+            width: width,
+
+            height: height
 
         });
 
 
-        // Создаём SVG polygon
-
-        const polygon =
-            document.createElementNS(
-                'http://www.w3.org/2000/svg',
-                'polygon'
-            );
-
-
-        polygon.setAttribute(
-            'class',
-            'zone'
-        );
-
-
-        polygon.setAttribute(
-            'points',
-            pointsCopy
-                .map(point =>
-                    `${point.x},${point.y}`
-                )
-                .join(' ')
-        );
-
-
-        svg.insertBefore(
-            polygon,
-            currentZone
-        );
-
-
-        // Очищаем текущую область
-
-        points = [];
-
-        currentZone.setAttribute(
-            'points',
-            ''
-        );
-
-
-        zoneName.value = '';
-
-
         updateZonesList();
 
-    }
 
+        // очищаем название
 
-    // Очистить текущую область
-
-    function clearCurrentZone() {
-
-        points = [];
-
-        currentZone.setAttribute(
-            'points',
-            ''
-        );
+        document
+        .querySelector('#zoneName')
+        .value = '';
 
     }
 
-
-    // Показываем список зон
 
     function updateZonesList() {
+
 
         zonesList.innerHTML =
             '<h3>Созданные зоны:</h3>';
 
 
-        zones.forEach(function(zone, index) {
-
-            const item =
-                document.createElement('div');
+        zones.forEach(
+            function(zone, index) {
 
 
-            item.className =
-                'zone-item';
+                const item =
+                    document.createElement('div');
 
 
-            item.innerHTML =
+                item.className =
+                    'zone-item';
 
-                `${index + 1}. ${zone.name}`;
+
+                item.innerHTML = `
+
+                    <strong>
+                        ${index + 1}. ${zone.name}
+                    </strong>
+
+                    <br>
+
+                    X: ${zone.x}
+
+                    &nbsp;&nbsp;
+
+                    Y: ${zone.y}
+
+                    <br>
+
+                    Ширина: ${zone.width}
+
+                    &nbsp;&nbsp;
+
+                    Высота: ${zone.height}
+
+                `;
 
 
-            zonesList.appendChild(item);
+                zonesList.appendChild(
+                    item
+                );
 
-        });
+            }
+        );
 
     }
 
+
 </script>
+
 
 </body>
 
