@@ -1,65 +1,185 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Yoga Body Map</title>
+    <title>Body Map Editor</title>
 
     <style>
+
         body {
             margin: 0;
-            background: #f5f5f5;
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
             display: flex;
             justify-content: center;
+        }
+
+        .app {
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 22px;
         }
 
         .body-map {
             position: relative;
             width: 250px;
-            max-width: 100%;
+            margin: 20px auto;
         }
 
         .body-map img {
-            width: 100%;
+            width: 250px;
+            height: 700px;
             display: block;
         }
+
         .zones {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 250px;
+            height: 700px;
         }
 
         .zone {
-            fill: rgba(255, 170, 0, 0.5);
+            fill: rgba(255, 170, 0, 0.45);
+            stroke: orange;
+            stroke-width: 2;
         }
+
+        .point {
+            fill: red;
+        }
+
+        button {
+            padding: 10px 16px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
     </style>
 </head>
 
+
 <body>
 
+<div class="app">
+
+    <h1>Редактор зон тела</h1>
+
+    <p>Кликай по изображению, чтобы создать область</p>
+
     <div class="body-map">
-    
-        <img src="body.png" alt="Body map">
-    
-        <svg class="zones" viewBox="0 0 250 700">
-    
-            <path
+
+        <img src="body.png" alt="Body">
+
+        <svg
+            class="zones"
+            viewBox="0 0 250 700"
+        >
+
+            <polygon
+                id="currentZone"
                 class="zone"
-                d="
-                    M 85 220
-                    C 100 310, 150 310, 165 320
-                    C 155 345, 155 375, 165 395
-                    C 145 410, 105 410, 85 395
-                    C 95 375, 95 345, 85 320
-                    Z
-                "
+                points=""
             />
-    
+
         </svg>
-    
+
     </div>
+
+
+    <button onclick="finishZone()">
+        Завершить область
+    </button>
+
+    <button onclick="clearZone()">
+        Очистить
+    </button>
+
+    <h3>Координаты:</h3>
+
+    <textarea
+        id="coordinates"
+        rows="5"
+        cols="30"
+        readonly
+    ></textarea>
+
+</div>
+
+
+<script>
+
+    const svg = document.querySelector('.zones');
+    const polygon = document.querySelector('#currentZone');
+    const coordinatesBox = document.querySelector('#coordinates');
+
+    let points = [];
+
+
+    svg.addEventListener('click', function(event) {
+
+        const rect = svg.getBoundingClientRect();
+
+        const x = (event.clientX - rect.left) * 250 / rect.width;
+        const y = (event.clientY - rect.top) * 700 / rect.height;
+
+        points.push({
+            x: Math.round(x),
+            y: Math.round(y)
+        });
+
+        updatePolygon();
+
+    });
+
+
+    function updatePolygon() {
+
+        const pointsString = points
+            .map(point => `${point.x},${point.y}`)
+            .join(' ');
+
+        polygon.setAttribute(
+            'points',
+            pointsString
+        );
+
+    }
+
+
+    function finishZone() {
+
+        const pointsString = points
+            .map(point => `${point.x},${point.y}`)
+            .join(' ');
+
+        coordinatesBox.value = pointsString;
+
+    }
+
+
+    function clearZone() {
+
+        points = [];
+
+        polygon.setAttribute(
+            'points',
+            ''
+        );
+
+        coordinatesBox.value = '';
+
+    }
+
+</script>
+
 </body>
+
 </html>
