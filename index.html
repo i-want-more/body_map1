@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="ru">
 
@@ -84,6 +85,17 @@
             margin: 5px;
 
             cursor: pointer;
+
+        }
+
+
+        .delete-button {
+
+            background: #eee;
+
+            border: 1px solid #ccc;
+
+            padding: 6px 10px;
 
         }
 
@@ -181,16 +193,19 @@
 
             <label>
                 X
+
                 <input
                     id="x"
                     type="number"
                     value="125"
                 >
+
             </label>
 
 
             <label>
                 Y
+
                 <input
                     id="y"
                     type="number"
@@ -206,28 +221,34 @@
 
             <label>
                 Ширина
+
                 <input
                     id="width"
                     type="number"
                     value="60"
                 >
+
             </label>
 
 
             <label>
                 Высота
+
                 <input
                     id="height"
                     type="number"
                     value="100"
                 >
+
             </label>
 
         </div>
 
 
         <button onclick="addEllipse()">
+
             Добавить эллипс
+
         </button>
 
 
@@ -363,7 +384,7 @@
         );
 
 
-        zones.push({
+        const zone = {
 
             name: name,
 
@@ -373,19 +394,43 @@
 
             width: width,
 
-            height: height
+            height: height,
 
-        });
+            element: ellipse
+
+        };
+
+
+        zones.push(zone);
 
 
         updateZonesList();
 
 
-        // очищаем название
-
         document
         .querySelector('#zoneName')
         .value = '';
+
+    }
+
+
+    function deleteZone(index) {
+
+
+        const zone =
+            zones[index];
+
+
+        zone.element.remove();
+
+
+        zones.splice(
+            index,
+            1
+        );
+
+
+        updateZonesList();
 
     }
 
@@ -412,7 +457,10 @@
                 item.innerHTML = `
 
                     <strong>
-                        ${index + 1}. ${zone.name}
+
+                        ${index + 1}.
+                        ${zone.name}
+
                     </strong>
 
                     <br>
@@ -430,6 +478,17 @@
                     &nbsp;&nbsp;
 
                     Высота: ${zone.height}
+
+                    <br>
+
+                    <button
+                        class="delete-button"
+                        onclick="deleteZone(${index})"
+                    >
+
+                        Удалить
+
+                    </button>
 
                 `;
 
@@ -450,3 +509,4 @@
 </body>
 
 </html>
+```
