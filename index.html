@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="ru">
 
@@ -405,7 +404,8 @@
             height: height,
             points: points,
             element: polygon,
-            handles: []
+            handles: [],
+            edgeHandles: []
         };
 
         zones.push(zone);
@@ -449,17 +449,26 @@
                 .join(' ')
         );
 
-        // Удаляем старые точки
+        // Удаляем старые точки вершин и точки на гранях
         zone.handles.forEach(
             handle => handle.remove()
         );
 
-        zone.handles = [];
+        zone.edgeHandles.forEach(
+            handle => handle.remove()
+        );
 
-        // Точки показываем только у выбранной зоны
+        zone.handles = [];
+        zone.edgeHandles = [];
+
+        // Показываем редактор точек только для выбранной зоны
         if (selectedZone !== zone) {
             return;
         }
+
+        // --------------------------------
+        // Вершины полигона
+        // --------------------------------
 
         zone.points.forEach(
             function(point, index) {
@@ -489,8 +498,6 @@
                     'r',
                     '6'
                 );
-
-                handle.dataset.index = index;
 
                 svg.appendChild(handle);
 
@@ -563,6 +570,231 @@
                         updateZonesList();
 
                     }
+                );
+
+            }
+        );
+
+
+        // --------------------------------
+        // Точки добавления на гранях
+        // --------------------------------
+
+        zone.points.forEach(
+            function(point, index) {
+
+                const nextIndex =
+                    (index + 1) % zone.points.length;
+
+                const nextPoint =
+                    zone.points[nextIndex];
+
+                const midpoint =
+                    document.createElementNS(
+                        'http://www.w3.org/2000/svg',
+                        'circle'
+                    );
+
+                midpoint.setAttribute(
+                    'class',
+                    'edge-handle'
+                );
+
+                midpoint.setAttribute(
+                    'cx',
+                    (point.x + nextPoint.x) / 2
+                );
+
+                midpoint.setAttribute(
+                    'cy',
+                    (point.y + nextPoint.y) / 2
+                );
+
+                midpoint.setAttribute(
+                    'r',
+                    '5'
+                );
+
+                svg.appendChild(midpoint);
+
+                zone.edgeHandles.push(midpoint);
+
+                // Наведение на грань
+                midpoint.addEventListener(
+                    'mouseenter',
+                    function() {
+
+                        midpoint.classList.add(
+                            'visible'
+                        );
+
+                    }
+                );
+
+                midpoint.addEventListener(
+                    'mouseleave',
+                    function() {
+
+                        midpoint.classList.remove(
+                            'visible'
+                        );
+
+                    }
+                );
+
+                // Клик превращает середину грани
+                // в новую вершину
+                midpoint.addEventListener(
+                    'click',
+                    function(event) {
+
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        const newPoint = {
+                            x: (point.x + nextPoint.x) / 2,
+                            y: (point.y + nextPoint.y) / 2
+                        };
+
+                        zone.points.splice(
+                            nextIndex,
+                            0,
+                            newPoint
+                        );
+
+                        renderZone(zone);
+
+                        // Новая вершина сразу выбирается
+                        // визуально и готова к перемещению.
+                        updateZoneGeometry(zone);
+
+                        updateZonesList();
+
+                    }
+                );
+
+            }
+        );
+
+        // Показываем точки на гранях при наведении
+        // непосредственно на самой грани.
+        zone.element.addEventListener(
+            'mousemove',
+            function(event) {
+
+                const rect =
+                    svg.getBoundingClientRect();
+
+                const mouseX =
+                    (event.clientX - rect.left) *
+                    250 / rect.width;
+
+                const mouseY =
+                    (event.clientY - rect.top) *
+                    700 / rect.height;
+
+                let closestIndex = -1;
+                let closestDistance = Infinity;
+
+                zone.points.forEach(
+                    function(point, index) {
+
+                        const next =
+                            zone.points[
+                                (index + 1) %
+                                zone.points.length
+                            ];
+
+                        const dx =
+                            next.x - point.x;
+
+                        const dy =
+                            next.y - point.y;
+
+                        const lengthSquared =
+                            dx * dx + dy * dy;
+
+                        let t = 0;
+
+                        if (lengthSquared > 0) {
+
+                            t =
+                                (
+                                    (mouseX - point.x) * dx +
+                                    (mouseY - point.y) * dy
+                                ) /
+                                lengthSquared;
+
+                            t =
+                                Math.max(
+                                    0,
+                                    Math.min(1, t)
+                                );
+
+                        }
+
+                        const projectedX =
+                            point.x + t * dx;
+
+                        const projectedY =
+                            point.y + t * dy;
+
+                        const distance =
+                            Math.hypot(
+                                mouseX - projectedX,
+                                mouseY - projectedY
+                            );
+
+                        if (
+                            distance < closestDistance
+                        ) {
+
+                            closestDistance =
+                                distance;
+
+                            closestIndex =
+                                index;
+
+                        }
+
+                    }
+                );
+
+                // Скрываем все точки
+                zone.edgeHandles.forEach(
+                    handle =>
+                        handle.classList.remove(
+                            'visible'
+                        )
+                );
+
+                // Показываем ближайшую грань,
+                // если курсор достаточно близко.
+                if (
+                    closestIndex >= 0 &&
+                    closestDistance < 8
+                ) {
+
+                    zone.edgeHandles[
+                        closestIndex
+                    ].classList.add(
+                        'visible'
+                    );
+
+                }
+
+            }
+        );
+
+        zone.element.addEventListener(
+            'mouseleave',
+            function() {
+
+                zone.edgeHandles.forEach(
+                    handle =>
+                        handle.classList.remove(
+                            'visible'
+                        )
                 );
 
             }
@@ -880,5 +1112,3 @@
 </body>
 
 </html>
-
-```
