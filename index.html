@@ -169,12 +169,20 @@ body {
 ===================================================== */
 
 .body-zone {
-    fill: none;
+    fill: currentColor;
+    fill-opacity: 0.38;
 
+    stroke: currentColor;
     stroke-width: 1.5;
+    stroke-opacity: 0.55;
+
+    stroke-linejoin: round;
+    stroke-linecap: round;
+
+    filter: url(#soft-edge);
 
     transition:
-        stroke 0.2s ease,
+        color 0.2s ease,
         opacity 0.2s ease;
 }
 
@@ -211,15 +219,15 @@ body {
 ===================================================== */
 
 .level-low {
-    stroke: #e53935;
+    color: #e53935;
 }
 
 .level-medium {
-    stroke: #f0b400;
+    color: #f0b400;
 }
 
 .level-high {
-    stroke: #2e9d50;
+    color: #2e9d50;
 }
 
 
