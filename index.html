@@ -28,9 +28,6 @@ h1 {
     text-align: center;
 }
 
-
-/* Панель */
-
 .controls {
     background: white;
     padding: 15px;
@@ -48,9 +45,6 @@ input {
     padding: 8px;
 }
 
-
-/* Сообщение */
-
 .message {
     margin-top: 10px;
     padding: 10px;
@@ -60,7 +54,7 @@ input {
 }
 
 
-/* Карта */
+/* Тело */
 
 .body-map {
     position: relative;
@@ -78,10 +72,8 @@ svg {
     position: absolute;
     left: 0;
     top: 0;
-
     width: 250px;
     height: 700px;
-
     overflow: visible;
 }
 
@@ -92,7 +84,6 @@ svg {
     fill: rgba(255, 170, 0, 0.4);
     stroke: orange;
     stroke-width: 2;
-
     cursor: pointer;
 }
 
@@ -108,7 +99,6 @@ svg {
     fill: white;
     stroke: #222;
     stroke-width: 2;
-
     cursor: move;
 }
 
@@ -117,7 +107,49 @@ svg {
 }
 
 
-/* Панель параметров */
+/*
+Точка для добавления новой вершины.
+
+Она полностью скрыта по умолчанию.
+*/
+
+.midpoint {
+    fill: white;
+    stroke: #333;
+    stroke-width: 1.5;
+    cursor: pointer;
+
+    opacity: 0;
+
+    pointer-events: none;
+}
+
+
+/*
+Показываем midpoint,
+когда соответствующая сторона находится
+под курсором.
+*/
+
+.midpoint.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+
+/*
+Невидимая зона над каждой стороной.
+Она нужна, чтобы не нужно было попадать
+курсором точно в тонкую линию.
+*/
+
+.edge-hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 14px;
+    cursor: crosshair;
+}
+
 
 .parameters {
     background: white;
@@ -129,33 +161,33 @@ svg {
 textarea {
     width: 100%;
     box-sizing: border-box;
-
-    min-height: 100px;
-
+    min-height: 110px;
     padding: 10px;
-
     font-family: monospace;
     font-size: 13px;
-
     resize: vertical;
-}
-
-
-/* Список */
-
-.polygon-item {
-    background: white;
-
-    padding: 12px;
-
-    margin-top: 8px;
-
-    border-radius: 8px;
 }
 
 .delete-button {
     background: #eee;
     border: 1px solid #ccc;
+}
+
+.polygon-item {
+    background: white;
+    padding: 12px;
+    margin-top: 8px;
+    border-radius: 8px;
+}
+
+.path-preview {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 12px;
+    word-break: break-all;
 }
 
 </style>
@@ -191,14 +223,11 @@ textarea {
         id="message"
         class="message"
     >
-        Кликайте по силуэту, чтобы создавать
-        вершины полигона.
+        Кликайте по силуэту, чтобы создавать вершины.
     </div>
 
 </div>
 
-
-<!-- Тело -->
 
 <div class="body-map">
 
@@ -215,7 +244,7 @@ textarea {
 </div>
 
 
-<!-- Параметры -->
+<!-- Параметры выбранного полигона -->
 
 <div
     id="parameters"
@@ -227,6 +256,7 @@ textarea {
         Выбранный полигон
     </strong>
 
+
     <p>
         Название:
     </p>
@@ -236,8 +266,9 @@ textarea {
         type="text"
     >
 
+
     <p>
-        SVG path:
+        SVG path с координатами:
     </p>
 
     <textarea
@@ -245,7 +276,6 @@ textarea {
         readonly
     ></textarea>
 
-    <br>
 
     <button
         id="deleteButton"
@@ -256,8 +286,6 @@ textarea {
 
 </div>
 
-
-<!-- Список -->
 
 <div id="polygonList"></div>
 
@@ -271,7 +299,6 @@ textarea {
 /* =====================================================
    ОСНОВНЫЕ ПЕРЕМЕННЫЕ
 ===================================================== */
-
 
 const svg =
     document.getElementById('svg');
@@ -317,11 +344,9 @@ let temporaryPolygon = null;
 let draggingVertex = null;
 
 
-
 /* =====================================================
-   НАЧАТЬ СОЗДАНИЕ
+   СОЗДАНИЕ ПОЛИГОНА
 ===================================================== */
-
 
 startButton.addEventListener(
     'click',
@@ -374,11 +399,9 @@ function startDrawing() {
 }
 
 
-
 /* =====================================================
-   КЛИК ПО SVG
+   КЛИКИ ПРИ СОЗДАНИИ
 ===================================================== */
-
 
 svg.addEventListener(
     'click',
@@ -389,15 +412,10 @@ svg.addEventListener(
         }
 
 
-        /*
-        Не добавляем точку,
-        если кликнули по вершине.
-        */
-
         if (
-            event.target.classList.contains(
-                'vertex'
-            )
+            event.target.classList.contains('vertex') ||
+            event.target.classList.contains('midpoint') ||
+            event.target.classList.contains('edge-hit')
         ) {
             return;
         }
@@ -416,11 +434,9 @@ svg.addEventListener(
 );
 
 
-
 /* =====================================================
-   ПОЛУЧИТЬ КООРДИНАТЫ SVG
+   КООРДИНАТЫ SVG
 ===================================================== */
-
 
 function getSVGPoint(event) {
 
@@ -437,33 +453,28 @@ function getSVGPoint(event) {
 
     return {
 
-        x:
-            Math.round(
-                (event.clientX - rect.left)
-                * scaleX
-            ),
+        x: Math.round(
+            (event.clientX - rect.left)
+            * scaleX
+        ),
 
-        y:
-            Math.round(
-                (event.clientY - rect.top)
-                * scaleY
-            )
+        y: Math.round(
+            (event.clientY - rect.top)
+            * scaleY
+        )
 
     };
 
 }
 
 
-
 /* =====================================================
    ВРЕМЕННЫЙ ПОЛИГОН
 ===================================================== */
 
-
 function updateTemporaryPolygon() {
 
     temporaryPolygon.setAttribute(
-
         'points',
 
         drawingPoints
@@ -472,17 +483,14 @@ function updateTemporaryPolygon() {
                     `${point.x},${point.y}`
             )
             .join(' ')
-
     );
 
 }
 
 
-
 /* =====================================================
-   ЗАВЕРШИТЬ
+   ЗАВЕРШЕНИЕ ПОЛИГОНА
 ===================================================== */
-
 
 finishButton.addEventListener(
     'click',
@@ -516,14 +524,14 @@ function finishDrawing() {
     temporaryPolygon.remove();
 
 
-    const polygon =
+    const polygonElement =
         document.createElementNS(
             'http://www.w3.org/2000/svg',
             'polygon'
         );
 
 
-    polygon.setAttribute(
+    polygonElement.setAttribute(
         'class',
         'polygon'
     );
@@ -541,30 +549,32 @@ function finishDrawing() {
                 })
             ),
 
-        element: polygon,
+        element: polygonElement,
 
-        vertices: []
+        vertices: [],
+
+        midpoints: [],
+
+        edgeHits: []
 
     };
 
 
-    polygon.setAttribute(
+    polygonElement.setAttribute(
         'points',
-        pointsToString(
-            data.points
-        )
+        pointsToString(data.points)
     );
 
 
     svg.appendChild(
-        polygon
+        polygonElement
     );
 
 
     polygons.push(data);
 
 
-    polygon.addEventListener(
+    polygonElement.addEventListener(
         'click',
         function(event) {
 
@@ -576,7 +586,7 @@ function finishDrawing() {
     );
 
 
-    createVertices(data);
+    createPolygonControls(data);
 
 
     drawing = false;
@@ -594,17 +604,14 @@ function finishDrawing() {
 
     updateList();
 
-
     selectPolygon(data);
 
 }
 
 
-
 /* =====================================================
-   ПРЕОБРАЗОВАНИЕ ТОЧЕК
+   POINTS → SVG
 ===================================================== */
-
 
 function pointsToString(points) {
 
@@ -618,26 +625,25 @@ function pointsToString(points) {
 }
 
 
-
 /* =====================================================
-   СОЗДАНИЕ ВЕРШИН
+   СОЗДАНИЕ ЭЛЕМЕНТОВ РЕДАКТИРОВАНИЯ
 ===================================================== */
 
+function createPolygonControls(polygon) {
 
-function createVertices(polygon) {
-
-    /*
-    Удаляем старые вершины
-    */
-
-    polygon.vertices.forEach(
-        vertex =>
-            vertex.remove()
-    );
+    removePolygonControls(polygon);
 
 
     polygon.vertices = [];
 
+    polygon.midpoints = [];
+
+    polygon.edgeHits = [];
+
+
+    /* =================================================
+       ВЕРШИНЫ
+    ================================================= */
 
     polygon.points.forEach(
         (point, index) => {
@@ -673,9 +679,7 @@ function createVertices(polygon) {
             );
 
 
-            svg.appendChild(
-                vertex
-            );
+            svg.appendChild(vertex);
 
 
             polygon.vertices.push(
@@ -683,9 +687,7 @@ function createVertices(polygon) {
             );
 
 
-            /*
-            Начало перетаскивания
-            */
+            /* Начало drag */
 
             vertex.addEventListener(
                 'pointerdown',
@@ -693,14 +695,11 @@ function createVertices(polygon) {
 
                     event.stopPropagation();
 
-
                     draggingVertex = {
 
-                        polygon:
-                            polygon,
+                        polygon: polygon,
 
-                        index:
-                            index
+                        index: index
 
                     };
 
@@ -713,9 +712,7 @@ function createVertices(polygon) {
             );
 
 
-            /*
-            Перемещение
-            */
+            /* Перемещение */
 
             vertex.addEventListener(
                 'pointermove',
@@ -752,17 +749,13 @@ function createVertices(polygon) {
                         point;
 
 
-                    updatePolygon(
-                        polygon
-                    );
+                    updatePolygon(polygon);
 
                 }
             );
 
 
-            /*
-            Завершение
-            */
+            /* Конец drag */
 
             vertex.addEventListener(
                 'pointerup',
@@ -785,57 +778,292 @@ function createVertices(polygon) {
         }
     );
 
+
+    /* =================================================
+       СТОРОНЫ
+    ================================================= */
+
+    polygon.points.forEach(
+        (point, index) => {
+
+            const next =
+                polygon.points[
+                    (index + 1)
+                    % polygon.points.length
+                ];
+
+
+            const midpoint = {
+
+                x:
+                    (point.x + next.x) / 2,
+
+                y:
+                    (point.y + next.y) / 2
+
+            };
+
+
+            /*
+            Невидимая широкая область
+            над стороной.
+            */
+
+            const edgeHit =
+                document.createElementNS(
+                    'http://www.w3.org/2000/svg',
+                    'line'
+                );
+
+
+            edgeHit.setAttribute(
+                'class',
+                'edge-hit'
+            );
+
+
+            edgeHit.setAttribute(
+                'x1',
+                point.x
+            );
+
+            edgeHit.setAttribute(
+                'y1',
+                point.y
+            );
+
+            edgeHit.setAttribute(
+                'x2',
+                next.x
+            );
+
+            edgeHit.setAttribute(
+                'y2',
+                next.y
+            );
+
+
+            /*
+            Ставим edge-hit перед
+            остальными элементами,
+            чтобы вершины оставались сверху.
+            */
+
+            svg.insertBefore(
+                edgeHit,
+                polygon.element
+            );
+
+
+            polygon.edgeHits.push(
+                edgeHit
+            );
+
+
+            /*
+            Маленькая точка
+            */
+
+            const midpointElement =
+                document.createElementNS(
+                    'http://www.w3.org/2000/svg',
+                    'circle'
+                );
+
+
+            midpointElement.setAttribute(
+                'class',
+                'midpoint'
+            );
+
+
+            midpointElement.setAttribute(
+                'r',
+                '4'
+            );
+
+
+            midpointElement.setAttribute(
+                'cx',
+                midpoint.x
+            );
+
+
+            midpointElement.setAttribute(
+                'cy',
+                midpoint.y
+            );
+
+
+            svg.appendChild(
+                midpointElement
+            );
+
+
+            polygon.midpoints.push(
+                midpointElement
+            );
+
+
+            /*
+            Наведение на сторону
+            */
+
+            edgeHit.addEventListener(
+                'mouseenter',
+                function() {
+
+                    midpointElement.classList.add(
+                        'visible'
+                    );
+
+                }
+            );
+
+
+            edgeHit.addEventListener(
+                'mouseleave',
+                function() {
+
+                    midpointElement.classList.remove(
+                        'visible'
+                    );
+
+                }
+            );
+
+
+            /*
+            Если курсор переходит
+            непосредственно на точку,
+            она остаётся видимой.
+            */
+
+            midpointElement.addEventListener(
+                'mouseenter',
+                function() {
+
+                    midpointElement.classList.add(
+                        'visible'
+                    );
+
+                }
+            );
+
+
+            midpointElement.addEventListener(
+                'mouseleave',
+                function() {
+
+                    midpointElement.classList.remove(
+                        'visible'
+                    );
+
+                }
+            );
+
+
+            /*
+            Клик по midpoint
+            */
+
+            midpointElement.addEventListener(
+                'click',
+                function(event) {
+
+                    event.stopPropagation();
+
+
+                    polygon.points.splice(
+                        index + 1,
+                        0,
+                        midpoint
+                    );
+
+
+                    updatePolygon(
+                        polygon
+                    );
+
+                }
+            );
+
+        }
+    );
+
 }
 
+
+/* =====================================================
+   УДАЛЕНИЕ HANDLE
+===================================================== */
+
+function removePolygonControls(polygon) {
+
+    if (polygon.vertices) {
+
+        polygon.vertices.forEach(
+            vertex =>
+                vertex.remove()
+        );
+
+    }
+
+
+    if (polygon.midpoints) {
+
+        polygon.midpoints.forEach(
+            point =>
+                point.remove()
+        );
+
+    }
+
+
+    if (polygon.edgeHits) {
+
+        polygon.edgeHits.forEach(
+            edge =>
+                edge.remove()
+        );
+
+    }
+
+}
 
 
 /* =====================================================
    ОБНОВЛЕНИЕ POLYGON
 ===================================================== */
 
-
 function updatePolygon(polygon) {
 
     polygon.element.setAttribute(
-
         'points',
-
         pointsToString(
             polygon.points
         )
-
     );
 
 
-    /*
-    Пересоздаём вершины,
-    чтобы они получили новые координаты.
-    */
-
-    createVertices(polygon);
+    createPolygonControls(
+        polygon
+    );
 
 
-    /*
-    Обновляем path
-    */
+    updatePathOutput(
+        polygon
+    );
 
-    updatePathOutput(polygon);
-
-
-    /*
-    Обновляем список
-    */
 
     updateList();
 
 }
 
 
-
 /* =====================================================
-   ВЫБОР ПОЛИГОНА
+   ВЫБОР POLYGON
 ===================================================== */
-
 
 function selectPolygon(polygon) {
 
@@ -874,11 +1102,9 @@ function selectPolygon(polygon) {
 }
 
 
-
 /* =====================================================
-   PATH
+   СОЗДАНИЕ SVG PATH
 ===================================================== */
-
 
 function polygonToPath(polygon) {
 
@@ -913,6 +1139,9 @@ function polygonToPath(polygon) {
 }
 
 
+/* =====================================================
+   ПОКАЗ PATH
+===================================================== */
 
 function updatePathOutput(polygon) {
 
@@ -924,11 +1153,9 @@ function updatePathOutput(polygon) {
 }
 
 
-
 /* =====================================================
    ИЗМЕНЕНИЕ НАЗВАНИЯ
 ===================================================== */
-
 
 selectedName.addEventListener(
     'input',
@@ -949,11 +1176,9 @@ selectedName.addEventListener(
 );
 
 
-
 /* =====================================================
    УДАЛЕНИЕ
 ===================================================== */
-
 
 deleteButton.addEventListener(
     'click',
@@ -967,9 +1192,8 @@ deleteButton.addEventListener(
         selectedPolygon.element.remove();
 
 
-        selectedPolygon.vertices.forEach(
-            vertex =>
-                vertex.remove()
+        removePolygonControls(
+            selectedPolygon
         );
 
 
@@ -993,11 +1217,9 @@ deleteButton.addEventListener(
 );
 
 
-
 /* =====================================================
-   СПИСОК ПОЛИГОНОВ
+   СПИСОК
 ===================================================== */
-
 
 function updateList() {
 
@@ -1030,11 +1252,12 @@ function updateList() {
                 Вершин:
                 ${polygon.points.length}
 
-                <br>
+                <div class="path-preview">
+                    ${polygonToPath(polygon)}
+                </div>
 
                 <button
                     class="delete-button"
-                    data-index="${index}"
                 >
                     Удалить
                 </button>
@@ -1071,9 +1294,8 @@ function updateList() {
                     polygon.element.remove();
 
 
-                    polygon.vertices.forEach(
-                        vertex =>
-                            vertex.remove()
+                    removePolygonControls(
+                        polygon
                     );
 
 
@@ -1111,7 +1333,6 @@ function updateList() {
     );
 
 }
-
 
 </script>
 
